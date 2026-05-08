@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SolScope — Token Intelligence Terminal</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #060610;
+      --bg2: #0d0d1f;
+      --bg3: #12122a;
+      --border: #1e1e3a;
+      --border2: #2a2a4a;
+      --text: #e2e8f0;
+      --text2: #94a3b8;
+      --text3: #475569;
+      --purple: #7c3aed;
+      --purple2: #a78bfa;
+      --cyan: #06b6d4;
+      --green: #22c55e;
+      --green2: #4ade80;
+      --yellow: #f59e0b;
+      --yellow2: #fbbf24;
+      --red: #ef4444;
+      --red2: #f87171;
+      --orange: #fb923c;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; min-height:100vh; overflow-x:hidden; }
+    .page { display:none; min-height:100vh; }
+    .page.active { display:block; }
+
+    /* ── NAV ── */
+    nav {
+      position:fixed; top:0; left:0; right:0; z-index:100;
+      background:rgba(6,6,16,0.85); backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--border);
+      padding:0 2rem; height:60px;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .nav-logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
+    .nav-logo-icon {
+      width:34px; height:34px;
+      background:linear-gradient(135deg,var(--purple),var(--cyan));
+      border-radius:9px; display:flex; align-items:center; justify-content:center;
+      font-size:16px;
+    }
+    .nav-logo-text { font-size:1.1rem; font-weight:700;
+      background:linear-gradient(90deg,var(--purple2),var(--cyan));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    .nav-links { display:flex; gap:4px; }
+    .nav-link {
+      padding:6px 14px; border-radius:8px; font-size:13px;
+      color:var(--text2); cursor:pointer; border:none; background:none;
+      transition:all 0.2s;
+    }
+    .nav-link:hover { color:var(--text); background:var(--bg3); }
+    .nav-link.active { color:var(--purple2); background:rgba(124,58,237,0.1); }
+
+    /* ── HOME PAGE ── */
+    #home { position:relative; overflow:hidden; }
+    .particles-canvas { position:absolute; inset:0; pointer-events:none; }
+
+    .home-content {
+      position:relative; z-index:1;
+      min-height:100vh; display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      padding:80px 2rem 2rem; text-align:center;
+    }
+
+    .home-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(124,58,237,0.1); border:1px solid rgba(124,58,237,0.3);
+      border-radius:99px; padding:5px 14px; font-size:12px; color:var(--purple2);
+      margin-bottom:1.5rem;
+    }
+    .badge-dot { width:6px; height:6px; border-radius:50%; background:var(--green2); animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+    .home-title {
+      font-size:clamp(2rem,5vw,3.5rem); font-weight:800; line-height:1.1;
+      margin-bottom:1rem;
+      background:linear-gradient(135deg,#fff 0%,var(--purple2) 50%,var(--cyan) 100%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    .home-sub { font-size:clamp(14px,2vw,17px); color:var(--text2); max-width:520px; line-height:1.7; margin-bottom:2.5rem; }
+
+    .search-container { width:100%; max-width:600px; margin-bottom:1rem; }
+    .search-box {
+      display:flex; gap:0;
+      background:var(--bg3); border:1px solid var(--border2);
+      border-radius:14px; overflow:hidden;
+      transition:border-color 0.2s; box-shadow:0 0 0 0 rgba(124,58,237,0);
+    }
+    .search-box:focus-within {
+      border-color:var(--purple);
+      box-shadow:0 0 0 3px rgba(124,58,237,0.15);
+    }
+    .search-icon { padding:0 14px; color:var(--text3); display:flex; align-items:center; font-size:16px; }
+    .search-field {
+      flex:1; padding:16px 8px; background:none; border:none;
+      color:var(--text); font-size:14px; outline:none;
+    }
+    .search-field::placeholder { color:var(--text3); }
+    .search-btn {
+      padding:12px 24px; margin:6px; border-radius:10px; border:none;
+      background:linear-gradient(135deg,var(--purple),var(--cyan));
+      color:white; font-size:13px; font-weight:600; cursor:pointer;
+      transition:opacity 0.2s; white-space:nowrap;
+    }
+    .search-btn:hover { opacity:0.85; }
+    .search-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+    .example-chips { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:2rem; }
+    .example-label { font-size:12px; color:var(--text3); }
+    .chip {
+      padding:5px 12px; border-radius:99px; font-size:12px;
+      border:1px solid var(--border2); color:var(--text2);
+      cursor:pointer; transition:all 0.2s; background:var(--bg3);
+    }
+    .chip:hover { border-color:var(--purple); color:var(--purple2); }
+
+    .recent-section { margin-bottom:2rem; }
+    .recent-label { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:8px; }
+    .recent-chips { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+    .recent-chip {
+      padding:5px 12px; border-radius:8px; font-size:11px;
+      border:1px solid var(--border); color:var(--text3);
+      cursor:pointer; font-family:monospace; transition:all 0.2s;
+    }
+    .recent-chip:hover { color:var(--text2); border-color:var(--border2); }
+
+    .home-footer { position:absolute; bottom:2rem; left:0; right:0; text-align:center; font-size:12px; color:var(--text3); }
+
+    /* ── LOADING ANIMATION ── */
+    .loading-overlay {
+      position:fixed; inset:0; background:var(--bg);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      z-index:200; opacity:0; pointer-events:none; transition:opacity 0.3s;
+    }
+    .loading-overlay.active { opacity:1; pointer-events:all; }
+
+    .radar-wrap { position:relative; width:120px; height:120px; margin-bottom:1.5rem; }
+    .radar-ring {
+      position:absolute; border-radius:50%; border:1px solid rgba(124,58,237,0.2);
+    }
+    .radar-ring:nth-child(1) { inset:0; }
+    .radar-ring:nth-child(2) { inset:20px; border-color:rgba(124,58,237,0.3); }
+    .radar-ring:nth-child(3) { inset:40px; border-color:rgba(124,58,237,0.5); }
+    .radar-sweep {
+      position:absolute; inset:0; border-radius:50%;
+      background:conic-gradient(from 0deg, transparent 75%, rgba(124,58,237,0.6) 100%);
+      animation:sweep 1.5s linear infinite;
+    }
+    @keyframes sweep { to { transform:rotate(360deg); } }
+    .radar-dot {
+      position:absolute; top:50%; left:50%;
+      width:8px; height:8px; border-radius:50%;
+      background:var(--purple2); transform:translate(-50%,-50%);
+      box-shadow:0 0 12px var(--purple);
+    }
+    .loading-text { font-size:14px; color:var(--text2); margin-bottom:6px; }
+    .loading-sub { font-size:12px; color:var(--text3); }
+
+    /* ── REPORT PAGE ── */
+    #report { padding-top:60px; }
+
+    .report-sticky {
+      position:sticky; top:60px; z-index:90;
+      background:rgba(6,6,16,0.9); backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--border);
+      padding:10px 2rem;
+      display:flex; align-items:center; justify-content:space-between;
+      flex-wrap:wrap; gap:10px;
+    }
+    .sticky-token { display:flex; align-items:center; gap:10px; }
+    .sticky-logo {
+      width:32px; height:32px; border-radius:50%;
+      background:linear-gradient(135deg,var(--bg3),#2d1b69);
+      display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:700; color:var(--purple2); overflow:hidden;
+    }
+    .sticky-logo img { width:100%; height:100%; object-fit:cover; }
+    .sticky-name { font-size:14px; font-weight:600; }
+    .sticky-addr { font-size:11px; color:var(--text3); font-family:monospace; cursor:pointer; }
+    .sticky-addr:hover { color:var(--purple2); }
+    .sticky-right { display:flex; gap:8px; align-items:center; }
+
+    .risk-pill {
+      font-size:12px; font-weight:600; padding:4px 12px; border-radius:99px;
+    }
+    .risk-pill.green { background:rgba(34,197,94,0.1); color:var(--green2); border:1px solid rgba(34,197,94,0.3); }
+    .risk-pill.yellow { background:rgba(245,158,11,0.1); color:var(--yellow2); border:1px solid rgba(245,158,11,0.3); }
+    .risk-pill.red { background:rgba(239,68,68,0.1); color:var(--red2); border:1px solid rgba(239,68,68,0.3); }
+
+    .btn-sm {
+      padding:6px 12px; border-radius:8px; font-size:12px; cursor:pointer;
+      border:1px solid var(--border2); background:var(--bg3); color:var(--text2);
+      transition:all 0.2s;
+    }
+    .btn-sm:hover { border-color:var(--purple); color:var(--purple2); }
+    .btn-sm.primary { background:var(--purple); border-color:var(--purple); color:white; }
+    .btn-sm.primary:hover { opacity:0.85; }
+
+    .report-body { max-width:1000px; margin:0 auto; padding:2rem; }
+
+    /* verdict card */
+    .verdict-banner {
+      border-radius:14px; padding:1.5rem; margin-bottom:1.5rem;
+      display:flex; align-items:center; gap:1.5rem;
+    }
+    .verdict-banner.green { background:rgba(34,197,94,0.07); border:1px solid rgba(34,197,94,0.2); }
+    .verdict-banner.yellow { background:rgba(245,158,11,0.07); border:1px solid rgba(245,158,11,0.2); }
+    .verdict-banner.red { background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.2); }
+
+    .verdict-icon { font-size:2.5rem; flex-shrink:0; }
+    .verdict-title { font-size:11px; text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px; }
+    .verdict-title.green { color:var(--green2); }
+    .verdict-title.yellow { color:var(--yellow2); }
+    .verdict-title.red { color:var(--red2); }
+    .verdict-body { font-size:15px; color:var(--text); line-height:1.6; }
+
+    /* metrics grid */
+    .metrics-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+      gap:10px; margin-bottom:1.5rem;
+    }
+    .metric-card {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:12px; padding:1rem;
+    }
+    .metric-label { font-size:11px; color:var(--text3); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em; }
+    .metric-val { font-size:1.3rem; font-weight:700; }
+    .metric-val.up { color:var(--green2); }
+    .metric-val.down { color:var(--red2); }
+
+    /* section headers */
+    .section-head { font-size:12px; font-weight:500; color:var(--text3); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:1rem; padding-bottom:8px; border-bottom:1px solid var(--border); }
+
+    /* panel */
+    .panel { background:var(--bg2); border:1px solid var(--border); border-radius:14px; padding:1.25rem; margin-bottom:1.5rem; }
+
+    /* chart */
+    .chart-container { height:220px; position:relative; }
+
+    /* risk gauge */
+    .risk-section { display:grid; grid-template-columns:auto 1fr; gap:1.5rem; align-items:start; margin-bottom:1.5rem; }
+    .gauge-wrap { position:relative; width:120px; height:120px; flex-shrink:0; }
+    .gauge-wrap canvas { position:absolute; inset:0; }
+    .gauge-text { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .gauge-num { font-size:1.8rem; font-weight:800; line-height:1; }
+    .gauge-max { font-size:11px; color:var(--text3); }
+
+    .flags-list { display:flex; flex-direction:column; gap:8px; }
+    .flag-card {
+      background:var(--bg); border:1px solid var(--border);
+      border-radius:10px; padding:10px 14px;
+      display:grid; grid-template-columns:28px 1fr; gap:8px; align-items:start;
+    }
+    .flag-icon { font-size:16px; padding-top:1px; }
+    .flag-title { font-size:13px; font-weight:500; color:var(--text); margin-bottom:2px; }
+    .flag-detail { font-size:12px; color:var(--text2); }
+
+    /* lifecycle */
+    .lifecycle-stages {
+      display:grid; grid-template-columns:repeat(5,1fr);
+      gap:4px; margin-bottom:1rem;
+    }
+    .stage-step {
+      height:6px; border-radius:3px;
+      background:var(--border); transition:background 0.5s;
+    }
+    .stage-step.active-early { background:var(--cyan); }
+    .stage-step.active-growing { background:var(--green); }
+    .stage-step.active-peaking { background:var(--yellow); }
+    .stage-step.active-distribution { background:var(--orange); }
+    .stage-step.active-declining { background:var(--red); }
+
+    .stage-labels { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; margin-bottom:1rem; }
+    .stage-label { font-size:10px; color:var(--text3); text-align:center; }
+
+    .lifecycle-badge {
+      display:inline-block; font-size:13px; font-weight:600;
+      padding:5px 16px; border-radius:99px; margin-bottom:10px;
+    }
+    .lifecycle-badge.EARLY { background:rgba(6,182,212,0.1); color:var(--cyan); border:1px solid rgba(6,182,212,0.3); }
+    .lifecycle-badge.GROWING { background:rgba(34,197,94,0.1); color:var(--green2); border:1px solid rgba(34,197,94,0.3); }
+    .lifecycle-badge.PEAKING { background:rgba(245,158,11,0.1); color:var(--yellow2); border:1px solid rgba(245,158,11,0.3); }
+    .lifecycle-badge.DISTRIBUTION { background:rgba(251,146,60,0.1); color:var(--orange); border:1px solid rgba(251,146,60,0.3); }
+    .lifecycle-badge.DECLINING { background:rgba(239,68,68,0.1); color:var(--red2); border:1px solid rgba(239,68,68,0.3); }
+    .lifecycle-badge.CONSOLIDATING { background:rgba(71,85,105,0.2); color:var(--text2); border:1px solid var(--border2); }
+
+    .lifecycle-text { font-size:13px; color:var(--text2); line-height:1.7; margin-bottom:1rem; }
+    .signal-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .signal-box { background:var(--bg); border-radius:8px; padding:8px 12px; }
+    .signal-label { font-size:10px; color:var(--text3); margin-bottom:2px; text-transform:uppercase; letter-spacing:0.05em; }
+    .signal-val { font-size:13px; font-weight:500; color:var(--text); }
+
+    /* comparables */
+    .comp-list { display:flex; flex-direction:column; gap:0; }
+    .comp-row {
+      display:grid; grid-template-columns:36px 1fr auto;
+      gap:12px; align-items:center;
+      padding:10px 0; border-bottom:1px solid var(--border);
+    }
+    .comp-row:last-child { border-bottom:none; }
+    .comp-logo {
+      width:36px; height:36px; border-radius:50%;
+      background:linear-gradient(135deg,var(--bg3),#2d1b69);
+      display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:700; color:var(--purple2);
+    }
+    .comp-name { font-size:13px; font-weight:500; }
+    .comp-liq { font-size:11px; color:var(--text3); }
+    .comp-holders { font-size:12px; color:var(--text2); text-align:right; }
+
+    /* about page */
+    #about { padding-top:80px; }
+    .about-body { max-width:700px; margin:0 auto; padding:2rem; }
+    .about-section { margin-bottom:2.5rem; }
+    .about-title { font-size:1.4rem; font-weight:700; margin-bottom:0.5rem;
+      background:linear-gradient(90deg,var(--purple2),var(--cyan));
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    .about-text { font-size:14px; color:var(--text2); line-height:1.8; margin-bottom:1rem; }
+    .signal-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .signal-table th { text-align:left; padding:8px 12px; font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid var(--border); }
+    .signal-table td { padding:10px 12px; border-bottom:1px solid var(--border); color:var(--text2); }
+    .signal-table tr:last-child td { border-bottom:none; }
+    .signal-table td:first-child { color:var(--text); font-weight:500; }
+    .pts-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; background:rgba(124,58,237,0.15); color:var(--purple2); }
+    .about-link { color:var(--cyan); text-decoration:none; }
+    .about-link:hover { text-decoration:underline; }
+
+    /* footer */
+    .site-footer { text-align:center; padding:2rem; color:var(--text3); font-size:12px; border-top:1px solid var(--border); margin-top:2rem; }
+
+    /* responsive */
+    @media(max-width:640px) {
+      .risk-section { grid-template-columns:1fr; }
+      .sticky-addr { display:none; }
+      .report-body { padding:1rem; }
+      .about-body { padding:1rem; }
+    }
+
+    /* toast */
+    .toast {
+      position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(100px);
+      background:var(--bg3); border:1px solid var(--border2);
+      border-radius:10px; padding:10px 20px; font-size:13px; color:var(--text);
+      transition:transform 0.3s; z-index:999; pointer-events:none;
+    }
+    .toast.show { transform:translateX(-50%) translateY(0); }
+
+    /* two col layout for report */
+    .report-two-col { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+    @media(max-width:700px) { .report-two-col { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+
+<!-- ── NAVIGATION ── -->
+<nav>
+  <div class="nav-logo" onclick="showPage('home')">
+    <div class="nav-logo-icon">🔭</div>
+    <span class="nav-logo-text">SolScope</span>
+  </div>
+  <div class="nav-links">
+    <button class="nav-link active" id="nav-home" onclick="showPage('home')">Home</button>
+    <button class="nav-link" id="nav-report" onclick="showPage('report')" style="display:none">Report</button>
+    <button class="nav-link" id="nav-about" onclick="showPage('about')">About</button>
+  </div>
+</nav>
+
+<!-- ── LOADING OVERLAY ── -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="radar-wrap">
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-ring"></div>
+    <div class="radar-sweep"></div>
+    <div class="radar-dot"></div>
+  </div>
+  <div class="loading-text" id="loadingText">Fetching intelligence report...</div>
+  <div class="loading-sub">Powered by Birdeye Data API</div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════ HOME ══════════════════════════════════ -->
+<div class="page active" id="home">
+  <canvas class="particles-canvas" id="particlesCanvas"></canvas>
+  <div class="home-content">
+    <div class="home-badge">
+      <div class="badge-dot"></div>
+      Live · Powered by Birdeye Data API
+    </div>
+    <h1 class="home-title">Know Before<br>You Buy</h1>
+    <p class="home-sub">Paste any Solana token address for a complete intelligence report — risk score, lifecycle stage, market health, and a plain-English verdict in seconds.</p>
+
+    <div class="search-container">
+      <div class="search-box">
+        <div class="search-icon">🔍</div>
+        <input class="search-field" id="homeSearch" placeholder="Paste Solana token address..." autocomplete="off"/>
+        <button class="search-btn" id="homeBtn" onclick="startAnalysis()">Analyze</button>
+      </div>
+    </div>
+
+    <div class="example-chips">
+      <span class="example-label">Try:</span>
+      <span class="chip" onclick="quickLoad('DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263')">BONK</span>
+      <span class="chip" onclick="quickLoad('So11111111111111111111111111111111111111112')">Wrapped SOL</span>
+      <span class="chip" onclick="quickLoad('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v')">USDC</span>
+      <span class="chip" onclick="quickLoad('JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN')">JUP</span>
+    </div>
+
+    <div class="recent-section" id="recentSection" style="display:none">
+      <div class="recent-label">Recent lookups</div>
+      <div class="recent-chips" id="recentChips"></div>
+    </div>
+
+    <div class="home-footer">
+      Built for Birdeye Data BIP Competition Sprint 3 · 2026
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ REPORT ══════════════════════════════════ -->
+<div class="page" id="report">
+
+  <!-- sticky header -->
+  <div class="report-sticky">
+    <div class="sticky-token">
+      <div class="sticky-logo" id="stickyLogo"></div>
+      <div>
+        <div class="sticky-name" id="stickyName">—</div>
+        <div class="sticky-addr" id="stickyAddr" onclick="copyAddr()" title="Click to copy">—</div>
+      </div>
+    </div>
+    <div class="sticky-right">
+      <span class="risk-pill" id="stickyRisk">—</span>
+      <button class="btn-sm" onclick="copyReport()">Copy Report</button>
+      <a id="birdeyeLink" href="#" target="_blank" class="btn-sm">View on Birdeye</a>
+      <button class="btn-sm" onclick="showPage('home')">← New Search</button>
+    </div>
+  </div>
+
+  <div class="report-body" id="reportBody">
+    <div style="text-align:center;padding:4rem;color:var(--text3)">Run a search from the home page to see a report.</div>
+  </div>
+
+  <div class="site-footer">SolScope · Token Intelligence Terminal · Powered by Birdeye Data API</div>
+</div>
+
+<!-- ══════════════════════════════════ ABOUT ══════════════════════════════════ -->
+<div class="page" id="about">
+  <div class="about-body">
+    <div class="about-section">
+      <div class="about-title">What is SolScope?</div>
+      <p class="about-text">SolScope is a free Token Intelligence Terminal for the Solana blockchain. Paste any token address and get a complete intelligence report in seconds — no wallet connection, no sign-up, no fees. Every report combines six on-chain risk signals, a lifecycle stage classifier, a 24-hour price chart, and a plain-English verdict that anyone can understand.</p>
+      <p class="about-text">Built on top of the <a href="https://bds.birdeye.so" class="about-link" target="_blank">Birdeye Data API</a> — the same data infrastructure trusted by Phantom, Raydium, Coinbase, and Bybit.</p>
+    </div>
+
+    <div class="about-section">
+      <div class="about-title">Risk Scoring — 6 signals</div>
+      <p class="about-text">Every token is scored from 0 (safest) to 100 (most dangerous) by evaluating six independent on-chain signals. The scores are additive and capped at 100.</p>
+      <table class="signal-table">
+        <thead>
+          <tr><th>Signal</th><th>Max Points</th><th>What it detects</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Liquidity depth</td><td><span class="pts-badge">25 pts</span></td><td>Low liquidity = easy price manipulation</td></tr>
+          <tr><td>Volume / Market Cap ratio</td><td><span class="pts-badge">25 pts</span></td><td>Extreme ratio = coordinated pump signal</td></tr>
+          <tr><td>24h price spike</td><td><span class="pts-badge">20 pts</span></td><td>200%+ move = possible pump in progress</td></tr>
+          <tr><td>Holder count</td><td><span class="pts-badge">20 pts</span></td><td>Under 50 holders = concentrated dump risk</td></tr>
+          <tr><td>Wash trading signal</td><td><span class="pts-badge">15 pts</span></td><td>High volume + very few trades = fake activity</td></tr>
+          <tr><td>Unique wallet activity</td><td><span class="pts-badge">10 pts</span></td><td>Few wallets driving high volume = coordinated buying</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="about-section">
+      <div class="about-title">Lifecycle Stages</div>
+      <p class="about-text">Every token sits somewhere in a market cycle. Understanding where saves money. SolScope classifies tokens into five stages based on volume trends, price momentum, and holder velocity.</p>
+      <table class="signal-table">
+        <thead><tr><th>Stage</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td>Early</td><td>New launch, very few holders, trajectory unknown. Highest risk, highest potential.</td></tr>
+          <tr><td>Growing</td><td>Volume rising organically, holder count building. Typically the best entry window.</td></tr>
+          <tr><td>Peaking</td><td>Price has already spiked significantly. Late entry risk — momentum buying phase.</td></tr>
+          <tr><td>Distribution</td><td>Price stalling while volume fades. Early holders selling to late buyers. Classic dump setup.</td></tr>
+          <tr><td>Declining</td><td>Both price and volume falling. Interest fading. High risk of further downside.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="about-section">
+      <div class="about-title">Data Sources</div>
+      <p class="about-text">All data is sourced from the <a href="https://bds.birdeye.so" class="about-link" target="_blank">Birdeye Data API</a> in real time. Endpoints used: <code>/defi/token_overview</code> (price, volume, holders, liquidity), <code>/defi/ohlcv</code> (price history), <code>/defi/token_trending</code> (trending status), and <code>/defi/tokenlist</code> (comparable tokens).</p>
+    </div>
+
+    <div class="about-section">
+      <div class="about-title">Open Source</div>
+      <p class="about-text">Built for the Birdeye Data BIP Competition Sprint 3 (May 2–9, 2026). Full source code available on <a href="https://github.com/erioluwaaluko-tech/solscope" class="about-link" target="_blank">GitHub</a>.</p>
+    </div>
+  </div>
+  <div class="site-footer">SolScope · Token Intelligence Terminal · Powered by Birdeye Data API</div>
+</div>
+
+<script>
+const API = window.location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8000' : '';
+let currentData = null;
+let gaugeChart = null;
+let priceChart = null;
+
+// ── PARTICLES ──
+const canvas = document.getElementById('particlesCanvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function initParticles() {
+  particles = [];
+  for (let i = 0; i < 60; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.5 + 0.3,
+      dx: (Math.random() - 0.5) * 0.3,
+      dy: (Math.random() - 0.5) * 0.3,
+      o: Math.random() * 0.4 + 0.1
+    });
+  }
+}
+
+function animateParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(124,58,237,${p.o})`;
+    ctx.fill();
+    p.x += p.dx; p.y += p.dy;
+    if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+  });
+  requestAnimationFrame(animateParticles);
+}
+
+resizeCanvas(); initParticles(); animateParticles();
+window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
+
+// ── NAVIGATION ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  document.getElementById('nav-' + name)?.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ── RECENT SEARCHES ──
+function saveRecent(addr) {
+  let recent = JSON.parse(localStorage.getItem('solscope_recent') || '[]');
+  recent = [addr, ...recent.filter(a => a !== addr)].slice(0, 5);
+  localStorage.setItem('solscope_recent', JSON.stringify(recent));
+  renderRecent();
+}
+
+function renderRecent() {
+  const recent = JSON.parse(localStorage.getItem('solscope_recent') || '[]');
+  const section = document.getElementById('recentSection');
+  const chips = document.getElementById('recentChips');
+  if (!recent.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  chips.innerHTML = recent.map(a =>
+    `<span class="recent-chip" onclick="quickLoad('${a}')">${a.slice(0,8)}...${a.slice(-4)}</span>`
+  ).join('');
+}
+
+renderRecent();
+
+// ── SEARCH ──
+function quickLoad(addr) {
+  document.getElementById('homeSearch').value = addr;
+  startAnalysis();
+}
+
+document.getElementById('homeSearch').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startAnalysis();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+    e.preventDefault();
+    showPage('home');
+    document.getElementById('homeSearch').focus();
+  }
+});
+
+// ── ANALYSIS ──
+async function startAnalysis() {
+  const addr = document.getElementById('homeSearch').value.trim();
+  if (!addr || addr.length < 30) { showToast('Please enter a valid Solana address'); return; }
+
+  document.getElementById('homeBtn').disabled = true;
+  showLoading(true);
+
+  try {
+    const res = await fetch(`${API}/api/analyze/${addr}`);
+    const data = await res.json();
+    if (data.error) { showToast('Error: ' + data.error); showLoading(false); return; }
+    currentData = data;
+    saveRecent(addr);
+    buildReport(data);
+    document.getElementById('nav-report').style.display = '';
+    showPage('report');
+  } catch(e) {
+    showToast('Connection error — is the server running?');
+  } finally {
+    showLoading(false);
+    document.getElementById('homeBtn').disabled = false;
+  }
+}
+
+function showLoading(on) {
+  const el = document.getElementById('loadingOverlay');
+  el.classList.toggle('active', on);
+}
+
+// ── BUILD REPORT ──
+function buildReport(d) {
+  const rc = d.risk_color || 'green';
+  const stage = d.lifecycle?.stage || 'UNKNOWN';
+  const lc = stage.toLowerCase().replace('_','-');
+
+  // sticky bar
+  const sLogo = document.getElementById('stickyLogo');
+  sLogo.innerHTML = d.logo ? `<img src="${d.logo}" onerror="this.style.display='none'">` : (d.symbol?.[0] || '?');
+  document.getElementById('stickyName').textContent = `${d.symbol}  ${d.name}`;
+  document.getElementById('stickyAddr').textContent = `${d.address.slice(0,14)}...${d.address.slice(-6)}`;
+  document.getElementById('stickyAddr').title = d.address;
+  const rp = document.getElementById('stickyRisk');
+  rp.textContent = d.risk_label;
+  rp.className = `risk-pill ${rc}`;
+  document.getElementById('birdeyeLink').href = `https://birdeye.so/token/${d.address}?chain=solana`;
+
+  const priceChange = d.price_change_24h || 0;
+  const changeClass = priceChange >= 0 ? 'up' : 'down';
+  const changeStr = `${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(1)}%`;
+
+  const verdictIcon = rc === 'green' ? '✅' : rc === 'yellow' ? '⚠️' : '🚨';
+  const verdictTitle = rc === 'green' ? 'LOOKS SAFE' : rc === 'yellow' ? 'APPROACH WITH CAUTION' : 'HIGH DANGER — AVOID';
+
+  const flagsHtml = (d.flags || []).map(f => `
+    <div class="flag-card">
+      <div class="flag-icon">${f.icon}</div>
+      <div>
+        <div class="flag-title">${f.title}</div>
+        <div class="flag-detail">${f.detail}</div>
+      </div>
+    </div>`).join('');
+
+  const signals = d.lifecycle?.signals || {};
+  const stageOrder = ['EARLY','GROWING','PEAKING','DISTRIBUTION','DECLINING'];
+  const stageIdx = stageOrder.indexOf(stage);
+  const stagesHtml = stageOrder.map((s, i) => {
+    const cls = i <= stageIdx && stageIdx >= 0 ? `active-${s.toLowerCase()}` : '';
+    return `<div class="stage-step ${cls}"></div>`;
+  }).join('');
+
+  const comparablesHtml = (d.comparables || []).length
+    ? (d.comparables || []).map(c => `
+        <div class="comp-row">
+          <div class="comp-logo">${c.symbol?.[0] || '?'}</div>
+          <div>
+            <div class="comp-name">${c.symbol} <span style="font-weight:400;color:var(--text3);font-size:12px">${c.name}</span></div>
+            <div class="comp-liq">Liquidity ${fmt(c.liquidity)}</div>
+          </div>
+          <div class="comp-holders">${c.holders || 0} holders</div>
+        </div>`).join('')
+    : '<div style="font-size:13px;color:var(--text3);padding:8px 0;">No comparable tokens found</div>';
+
+  document.getElementById('reportBody').innerHTML = `
+
+    <div class="verdict-banner ${rc}">
+      <div class="verdict-icon">${verdictIcon}</div>
+      <div>
+        <div class="verdict-title ${rc}">${verdictTitle}</div>
+        <div class="verdict-body">${d.verdict}</div>
+      </div>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-card"><div class="metric-label">Price</div><div class="metric-val">${fmtPrice(d.price)}</div></div>
+      <div class="metric-card"><div class="metric-label">24h Change</div><div class="metric-val ${changeClass}">${changeStr}</div></div>
+      <div class="metric-card"><div class="metric-label">Liquidity</div><div class="metric-val">${fmt(d.liquidity)}</div></div>
+      <div class="metric-card"><div class="metric-label">Market Cap</div><div class="metric-val">${fmt(d.market_cap)}</div></div>
+      <div class="metric-card"><div class="metric-label">Volume 24h</div><div class="metric-val">${fmt(d.volume_24h)}</div></div>
+      <div class="metric-card"><div class="metric-label">Holders</div><div class="metric-val">${d.holders || 0}</div></div>
+      <div class="metric-card"><div class="metric-label">Wallets 24h</div><div class="metric-val">${d.unique_wallets_24h || 0}</div></div>
+      <div class="metric-card"><div class="metric-label">Trades 24h</div><div class="metric-val">${d.trades_24h || 0}</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="section-head">24h Price Chart</div>
+      <div class="chart-container"><canvas id="priceChartCanvas"></canvas></div>
+    </div>
+
+    <div class="report-two-col">
+      <div class="panel">
+        <div class="section-head">Risk Analysis</div>
+        <div class="risk-section">
+          <div class="gauge-wrap">
+            <canvas id="gaugeCanvas" width="120" height="120"></canvas>
+            <div class="gauge-text">
+              <div class="gauge-num" style="color:${rc==='green'?'var(--green2)':rc==='yellow'?'var(--yellow2)':'var(--red2)'}">${d.risk_score}</div>
+              <div class="gauge-max">/100</div>
+            </div>
+          </div>
+          <div>
+            <div class="risk-pill ${rc}" style="margin-bottom:8px;">${d.risk_label}</div>
+            <div style="font-size:13px;color:var(--text2);">${d.flags?.length || 0} signal${d.flags?.length !== 1 ? 's' : ''} evaluated</div>
+          </div>
+        </div>
+        <div class="flags-list">${flagsHtml}</div>
+      </div>
+
+      <div>
+        <div class="panel" style="margin-bottom:1.5rem;">
+          <div class="section-head">Lifecycle Stage</div>
+          <div class="lifecycle-stages">${stagesHtml}</div>
+          <div class="stage-labels">
+            <div class="stage-label">Early</div>
+            <div class="stage-label">Growing</div>
+            <div class="stage-label">Peaking</div>
+            <div class="stage-label">Distrib.</div>
+            <div class="stage-label">Declining</div>
+          </div>
+          <div class="lifecycle-badge ${stage}">${stage}</div>
+          <p class="lifecycle-text">${d.lifecycle?.explanation || ''}</p>
+          <div class="signal-grid">
+            <div class="signal-box"><div class="signal-label">Price trend</div><div class="signal-val">${signals.price_trend || '—'}</div></div>
+            <div class="signal-box"><div class="signal-label">Volume trend</div><div class="signal-val">${signals.volume_trend || '—'}</div></div>
+            <div class="signal-box"><div class="signal-label">24h change</div><div class="signal-val">${(signals.price_change_24h || 0).toFixed(1)}%</div></div>
+            <div class="signal-box"><div class="signal-label">Vol/MCap</div><div class="signal-val">${signals.vol_mcap_ratio || 0}x</div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="section-head">Comparable Tokens</div>
+          <div class="comp-list">${comparablesHtml}</div>
+        </div>
+      </div>
+    </div>`;
+
+  setTimeout(() => {
+    drawGauge(d.risk_score, rc);
+    drawPriceChart(d.chart_data || []);
+  }, 100);
+}
+
+// ── GAUGE CHART ──
+function drawGauge(score, rc) {
+  const canvas = document.getElementById('gaugeCanvas');
+  if (!canvas) return;
+  if (gaugeChart) gaugeChart.destroy();
+  const color = rc === 'green' ? '#22c55e' : rc === 'yellow' ? '#f59e0b' : '#ef4444';
+  gaugeChart = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [score, 100 - score],
+        backgroundColor: [color, '#1e1e3a'],
+        borderWidth: 0,
+        circumference: 270,
+        rotation: 225
+      }]
+    },
+    options: {
+      responsive: false, cutout: '78%', animation: { duration: 800 },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    }
+  });
+}
+
+// ── PRICE CHART ──
+function drawPriceChart(chartData) {
+  const canvas = document.getElementById('priceChartCanvas');
+  if (!canvas || !chartData || chartData.length < 2) return;
+  if (priceChart) priceChart.destroy();
+  const labels = chartData.map(d => {
+    const date = new Date(d.time * 1000);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  });
+  const prices = chartData.map(d => d.close);
+  const isUp = prices[prices.length - 1] >= prices[0];
+  const color = isUp ? '#22c55e' : '#ef4444';
+  priceChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: prices,
+        borderColor: color,
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: true,
+        backgroundColor: isUp ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600 },
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => `$${ctx.parsed.y.toFixed(8)}` }
+      }},
+      scales: {
+        x: { ticks: { color: '#475569', maxTicksLimit: 8, font: { size: 10 } }, grid: { color: '#12122a' } },
+        y: { ticks: { color: '#475569', font: { size: 10 } }, grid: { color: '#1e1e3a' } }
+      }
+    }
+  });
+}
+
+// ── UTILITIES ──
+function fmt(num) {
+  if (!num) return '$0';
+  if (num >= 1e9) return `$${(num/1e9).toFixed(2)}B`;
+  if (num >= 1e6) return `$${(num/1e6).toFixed(2)}M`;
+  if (num >= 1e3) return `$${(num/1e3).toFixed(1)}K`;
+  return `$${num.toFixed(2)}`;
+}
+
+function fmtPrice(num) {
+  if (!num) return '$0';
+  if (num < 0.000001) return `$${num.toExponential(2)}`;
+  if (num < 0.01) return `$${num.toFixed(6)}`;
+  return `$${num.toFixed(4)}`;
+}
+
+function copyAddr() {
+  if (!currentData) return;
+  navigator.clipboard.writeText(currentData.address);
+  showToast('Address copied to clipboard');
+}
+
+function copyReport() {
+  if (!currentData) return;
+  const d = currentData;
+  const text = `SolScope Report — ${d.symbol} (${d.name})
+Address: ${d.address}
+Risk: ${d.risk_label} (${d.risk_score}/100)
+Verdict: ${d.verdict}
+Lifecycle: ${d.lifecycle?.stage}
+Price: ${fmtPrice(d.price)} | Liquidity: ${fmt(d.liquidity)} | Holders: ${d.holders}
+Powered by SolScope + Birdeye Data API
+https://solscope.onrender.com`;
+  navigator.clipboard.writeText(text);
+  showToast('Report copied to clipboard');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
