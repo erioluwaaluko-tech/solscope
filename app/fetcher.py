@@ -38,13 +38,14 @@ def get_token_ohlcv(address, timeframe="1H", limit=24):
     })
     if result:
         return result
-    # fallback
-    result = _get(f"{BASE_URL}/defi/ohlcv/base_quote", {
+    result2 = _get(f"{BASE_URL}/defi/ohlcv/base_quote", {
         "base_address": address,
         "type": timeframe,
         "limit": limit
     })
-    return result or {}
+    if result2:
+        return result2
+    return {}
 
 def get_similar_tokens(min_liq, max_liq, limit=3):
     """Fetch comparable tokens for context panel."""

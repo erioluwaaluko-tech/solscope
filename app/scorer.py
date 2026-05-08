@@ -17,7 +17,7 @@ def score_token(overview: dict) -> dict:
 
     # --- SIGNAL 2: VOLUME vs MARKET CAP ---
     volume_24h = overview.get("v24hUSD", 0) or 0
-    market_cap = overview.get("mc", 0) or 0
+    market_cap = overview.get("marketCap", 0) or overview.get("mc", 0) or 0
     if market_cap and volume_24h:
         ratio = volume_24h / market_cap
         if ratio > 10:

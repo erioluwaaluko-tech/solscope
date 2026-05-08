@@ -27,6 +27,37 @@ def root():
         return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
     return {"status": "online", "message": "SolScope is running"}
 
+def build_chart_from_overview(overview: dict) -> list:
+    """
+    Build a price chart from overview history fields
+    when OHLCV endpoint returns no data.
+    Uses the price snapshots available in token_overview.
+    """
+    import time as t
+    now = int(t.time())
+    price = overview.get("price", 0) or 0
+
+    points = [
+        {"label": "24h ago", "offset": 86400, "key": "history24hPrice"},
+        {"label": "8h ago",  "offset": 28800, "key": "history8hPrice"},
+        {"label": "4h ago",  "offset": 14400, "key": "history4hPrice"},
+        {"label": "2h ago",  "offset": 7200,  "key": "history2hPrice"},
+        {"label": "1h ago",  "offset": 3600,  "key": "history1hPrice"},
+        {"label": "Now",     "offset": 0,     "key": "price"},
+    ]
+
+    chart = []
+    for p in points:
+        val = overview.get(p["key"], 0) or 0
+        if val:
+            chart.append({
+                "time": now - p["offset"],
+                "open": val, "high": val, "low": val,
+                "close": val, "volume": 0
+            })
+
+    return chart if len(chart) >= 2 else []
+
 @app.get("/api/analyze/{address}")
 def analyze_token(address: str):
     """Full token intelligence report."""
@@ -83,7 +114,7 @@ def analyze_token(address: str):
             "logo":         overview.get("logoURI", ""),
             "price":        overview.get("price", 0),
             "price_change_24h": overview.get("priceChange24hPercent", 0) or overview.get("v24hChangePercent", 0) or 0,
-            "market_cap":   overview.get("mc", 0),
+            "market_cap":   overview.get("marketCap", 0) or overview.get("mc", 0) or overview.get("fdv", 0) or 0,
             "liquidity":    overview.get("liquidity", 0),
             "volume_24h":   overview.get("v24hUSD", 0),
             "holders":      overview.get("holder", 0),
@@ -97,7 +128,7 @@ def analyze_token(address: str):
             "verdict_color": score_result["verdict_color"],
             "flags":        formatted_flags,
             "lifecycle":    lifecycle_result,
-            "chart_data":   chart_data,
+            "chart_data":   chart_data if chart_data else build_chart_from_overview(overview),
             "comparables":  comparables,
             "scanned_at":   time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }

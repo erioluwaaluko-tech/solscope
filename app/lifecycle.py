@@ -19,10 +19,10 @@ def classify_lifecycle(overview: dict, ohlcv: dict) -> dict:
     # --- Extract signals ---
     price_change_24h = overview.get("priceChange24hPercent", 0) or \
                        overview.get("v24hChangePercent", 0) or 0
-    volume_24h = overview.get("v24hUSD", 0) or 0
+    volume_24h = overview.get("v24hUSD", 0) or overview.get("v24h", 0) or 0
     holders = overview.get("holder", 0) or 0
     liquidity = overview.get("liquidity", 0) or 0
-    market_cap = overview.get("mc", 0) or 0
+    market_cap = overview.get("marketCap", 0) or overview.get("mc", 0) or 0
     unique_wallets = overview.get("uniqueWallet24h", 0) or 0
     trades_24h = overview.get("trade24h", 0) or 0
 
